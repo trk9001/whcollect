@@ -8,9 +8,13 @@ packages = [
     { include = "whcollect", from = "src" },
 ]
 
+[tool.poetry.scripts]
+whcollect = "whcollect.cli:cli"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 tomli = "^1.2.2"
+click = "^8.0.3"
 
 [tool.poetry.dev-dependencies]
 
