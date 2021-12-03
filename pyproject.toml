@@ -4,9 +4,13 @@ version = "0.1.0"
 description = "Download wallpapers from your wallhaven collections."
 authors = ["trk <dev.trk.9001@gmail.com>"]
 license = "MIT"
+packages = [
+    { include = "whcollect", from = "src" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+tomli = "^1.2.2"
 
 [tool.poetry.dev-dependencies]
 
