@@ -37,4 +37,9 @@ repos:
     rev: v0.910-1
     hooks:
     -   id: mypy
-        args: ['--ignore-missing-imports', '--strict-equality', '--no-implicit-optional']
+        args:
+        -   "--install-types"
+        -   "--non-interactive"
+        -   "--ignore-missing-imports"
+        -   "--strict-equality"
+        -   "--no-implicit-optional"
