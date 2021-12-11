@@ -3,7 +3,7 @@ import atexit
 from asyncio import AbstractEventLoop
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
@@ -20,12 +20,13 @@ class Orchestrator:
 
     # Instance variables.
     username: str
-    collections: Iterable[str]
+    collections: set[str]
     api_key: str
     save_location: Path
     create_dirs: bool
     _loop: EventLoop
     _session: ClientSession
+    _url_params: dict[str, str]
 
     def __init__(
         self,
@@ -36,7 +37,7 @@ class Orchestrator:
         flat: bool = False,
         *,
         loop: EventLoop | None = None,
-        session: ClientSession | None = None
+        session: ClientSession | None = None,
     ):
         self.username = username
         self.collections = set(collections)
@@ -68,6 +69,8 @@ class Orchestrator:
                 )
             self._session = session
 
+        self._url_params = {"apikey": self.api_key}
+
     @classmethod
     async def _create_client_session(cls) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
@@ -81,6 +84,26 @@ class Orchestrator:
     @property
     def loop(self) -> EventLoop:
         return self._loop
+
+    async def fetch_and_normalize_collections(self) -> set[str]:
+        """Fetch and validate collection IDs."""
+        url = self.API_BASE_URL / "collections" / self.username
+        async with self.session.get(
+            url, params=self._url_params, raise_for_status=True
+        ) as resp:
+            obj: dict = await resp.json()
+
+        if error := obj.get("error"):
+            raise ValueError(f"Error: {error}")
+
+        cleaned_collection_ids = set()
+        for item in obj["data"]:  # type: dict[str, Any]
+            id_ = str(item["id"])
+            if item["label"] in self.collections or id_ in self.collections:
+                cleaned_collection_ids.add(id_)
+
+        self.collections = cleaned_collection_ids
+        return self.collections
 
     def _close_session(self) -> None:
         """Cleanup function for atexit to close the HTTP client session."""
