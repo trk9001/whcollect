@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Final
 
 from aiohttp import ClientSession, ClientTimeout
+from yarl import URL
 
 # Type alias for an asyncio-compatible event loop.
 EventLoop = AbstractEventLoop
@@ -13,8 +14,7 @@ EventLoop = AbstractEventLoop
 class Orchestrator:
     """Orchestrator to manage the downloading and saving of wallpapers."""
 
-    BASE_URL: Final[str] = "https://wallhaven.cc/"
-    API_URL_SUFFIX: Final[str] = "/api/v1"
+    API_BASE_URL: Final[URL] = URL("https://wallhaven.cc/api/v1")
     DEFAULT_REQUEST_TIMEOUT: Final[float] = 90.0  # Seconds.
 
     # Instance variables.
@@ -66,9 +66,7 @@ class Orchestrator:
     @classmethod
     async def _create_client_session(cls) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
-        session = ClientSession(
-            cls.BASE_URL, timeout=ClientTimeout(cls.DEFAULT_REQUEST_TIMEOUT)
-        )
+        session = ClientSession(timeout=ClientTimeout(cls.DEFAULT_REQUEST_TIMEOUT))
         return session
 
     @property
