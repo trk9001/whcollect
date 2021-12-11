@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 from asyncio import AbstractEventLoop
 from collections.abc import Iterable
 from pathlib import Path
@@ -48,6 +49,7 @@ class Orchestrator:
         # Set the asyncio event loop up.
         if loop is None:
             self._loop = asyncio.new_event_loop()
+            atexit.register(self._close_loop)
         else:
             if not isinstance(loop, AbstractEventLoop):
                 raise TypeError("'loop' must be an asyncio-compatible event loop")
@@ -56,6 +58,9 @@ class Orchestrator:
         # Set the HTTP client session up.
         if session is None:
             self._session = self._loop.run_until_complete(self._create_client_session())
+            # The registered functions are invoked in the reverse order, so `_close_session`
+            # must be registered after `_close_loop` if both are registered.
+            atexit.register(self._close_session)
         else:
             if not isinstance(session, ClientSession):
                 raise TypeError(
@@ -76,3 +81,13 @@ class Orchestrator:
     @property
     def loop(self) -> EventLoop:
         return self._loop
+
+    def _close_session(self) -> None:
+        """Cleanup function for atexit to close the HTTP client session."""
+        if not self._session.closed:
+            self._loop.run_until_complete(self._session.close())
+
+    def _close_loop(self) -> None:
+        """Cleanup function for atexit to close the event loop."""
+        if self._loop.is_running():
+            self._loop.close()
