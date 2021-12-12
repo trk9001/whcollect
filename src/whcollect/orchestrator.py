@@ -27,6 +27,7 @@ class Orchestrator:
     _loop: EventLoop
     _session: ClientSession
     _url_params: dict[str, str]
+    _valid_collections: set[tuple[str, str]]
 
     def __init__(
         self,
@@ -85,7 +86,7 @@ class Orchestrator:
     def loop(self) -> EventLoop:
         return self._loop
 
-    async def fetch_and_normalize_collections(self) -> set[str]:
+    async def fetch_and_normalize_collections(self) -> set[tuple[str, str]]:
         """Fetch and validate collection IDs."""
         url = self.API_BASE_URL / "collections" / self.username
         async with self.session.get(
@@ -96,14 +97,14 @@ class Orchestrator:
         if error := obj.get("error"):
             raise ValueError(f"Error: {error}")
 
-        cleaned_collection_ids = set()
+        self._valid_collections = set()
         for item in obj["data"]:  # type: dict[str, Any]
+            label = item["label"]
             id_ = str(item["id"])
-            if item["label"] in self.collections or id_ in self.collections:
-                cleaned_collection_ids.add(id_)
+            if label in self.collections or id_ in self.collections:
+                self._valid_collections.add((id_, label))
 
-        self.collections = cleaned_collection_ids
-        return self.collections
+        return self._valid_collections
 
     def _close_session(self) -> None:
         """Cleanup function for atexit to close the HTTP client session."""
