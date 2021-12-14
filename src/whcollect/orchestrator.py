@@ -8,6 +8,8 @@ from typing import Any, Final
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
 
+from .requests import request_with_backoff
+
 # Type alias for an asyncio-compatible event loop.
 EventLoop = AbstractEventLoop
 
@@ -70,6 +72,8 @@ class Orchestrator:
                 )
             self._session = session
 
+        self._url_params = {}
+
     async def _create_client_session(self) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
         session = ClientSession(
@@ -104,6 +108,34 @@ class Orchestrator:
                 self._valid_collections.add((id_, label))
 
         return self._valid_collections
+
+    async def fetch_wallpapers_and_queue_downloads(self) -> None:
+        """Fetch wallpapers and queue downloads."""
+        base_url = self.API_BASE_URL / "collections" / self.username
+
+        for collection_id, collection_label in self._valid_collections:  # noqa
+            url = base_url / collection_id
+            params = self._url_params.copy()
+            page = 1
+
+            while True:
+                params["page"] = str(page)
+
+                resp = await request_with_backoff(
+                    self.session, "GET", url, params=params
+                )
+                async with resp:
+                    obj: dict = await resp.json()
+
+                if error := obj.get("error"):
+                    raise ValueError(f"Error: {error}")
+
+                ...
+
+                if page >= obj["meta"]["last_page"]:
+                    break
+
+                page += 1
 
     def _close_session(self) -> None:
         """Cleanup function for atexit to close the HTTP client session."""
