@@ -70,12 +70,13 @@ class Orchestrator:
                 )
             self._session = session
 
-        self._url_params = {"apikey": self.api_key}
-
-    @classmethod
-    async def _create_client_session(cls) -> ClientSession:
+    async def _create_client_session(self) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
-        session = ClientSession(timeout=ClientTimeout(cls.DEFAULT_REQUEST_TIMEOUT))
+        session = ClientSession(
+            headers={"X-API-Key": self.api_key},
+            timeout=ClientTimeout(self.DEFAULT_REQUEST_TIMEOUT),
+            raise_for_status=True,
+        )
         return session
 
     @property
@@ -89,9 +90,7 @@ class Orchestrator:
     async def fetch_and_normalize_collections(self) -> set[tuple[str, str]]:
         """Fetch and validate collection IDs."""
         url = self.API_BASE_URL / "collections" / self.username
-        async with self.session.get(
-            url, params=self._url_params, raise_for_status=True
-        ) as resp:
+        async with self.session.get(url) as resp:
             obj: dict = await resp.json()
 
         if error := obj.get("error"):
