@@ -1,6 +1,6 @@
 import asyncio
 import atexit
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, Queue
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
@@ -30,6 +30,7 @@ class Orchestrator:
     _session: ClientSession
     _url_params: dict[str, str]
     _valid_collections: set[tuple[str, str]]
+    _download_queue: Queue[tuple[URL | str, Path | str]]
 
     def __init__(
         self,
@@ -109,12 +110,24 @@ class Orchestrator:
 
         return self._valid_collections
 
-    async def fetch_wallpapers_and_queue_downloads(self) -> None:
+    def construct_wallpaper_destination(self, collection_label: str) -> Path:
+        """Construct the final save location using the collection name."""
+        if self.create_dirs:
+            save_path = self.save_location / collection_label
+            save_path.mkdir(exist_ok=True)
+            return save_path
+
+        return self.save_location
+
+    async def fetch_and_queue_wallpapers_for_downloading(self) -> None:
         """Fetch wallpapers and queue downloads."""
         base_url = self.API_BASE_URL / "collections" / self.username
 
-        for collection_id, collection_label in self._valid_collections:  # noqa
+        self._download_queue = Queue()
+
+        for collection_id, collection_label in self._valid_collections:
             url = base_url / collection_id
+            save_location = self.construct_wallpaper_destination(collection_label)
             params = self._url_params.copy()
             page = 1
 
@@ -130,7 +143,8 @@ class Orchestrator:
                 if error := obj.get("error"):
                     raise ValueError(f"Error: {error}")
 
-                ...
+                for item in obj["data"]:  # type: dict[str, Any]
+                    await self._download_queue.put((item["path"], save_location))
 
                 if page >= obj["meta"]["last_page"]:
                     break
