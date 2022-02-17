@@ -10,8 +10,8 @@ from .exceptions import BadResponse
 # Literal type for supported HTTP methods.
 HTTP_METHOD = Literal["GET"]
 
-# Max times to retry a request.
-DEFAULT_MAX_TRIES = 8
+# By default try a request only once (rule of least surprise).
+DEFAULT_MAX_TRIES = 1
 
 
 async def request_with_backoff(
@@ -39,7 +39,7 @@ async def request_with_backoff(
     # Store the last exception raised while making a request.
     last_exc: Exception | None = None
 
-    for n in range(max_tries + 1):
+    for n in range(max_tries):
         try:
             resp = await session.request(method, url, **kwargs)
             if resp.status not in retry_for_statuses:
