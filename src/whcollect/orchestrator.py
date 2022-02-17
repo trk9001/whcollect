@@ -3,7 +3,7 @@ import atexit
 from asyncio import AbstractEventLoop
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, ClassVar
 
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
@@ -17,8 +17,8 @@ EventLoop = AbstractEventLoop
 class Orchestrator:
     """Orchestrator to manage the downloading and saving of wallpapers."""
 
-    API_BASE_URL: Final[URL] = URL("https://wallhaven.cc/api/v1")
-    DEFAULT_REQUEST_TIMEOUT: Final[float] = 90.0  # Seconds.
+    API_BASE_URL: ClassVar[URL] = URL("https://wallhaven.cc/api/v1")
+    DEFAULT_REQUEST_TIMEOUT: ClassVar[float] = 90.0  # Seconds.
 
     # Instance variables.
     username: str
