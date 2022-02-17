@@ -1,6 +1,6 @@
 import asyncio
 import atexit
-from asyncio import AbstractEventLoop, Queue
+from asyncio import AbstractEventLoop, Queue, Task
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
 
+from .downloader import download_wallpaper
 from .requests import request_with_backoff
 
 # Type alias for an asyncio-compatible event loop.
@@ -19,6 +20,7 @@ class Orchestrator:
 
     API_BASE_URL: ClassVar[URL] = URL("https://wallhaven.cc/api/v1")
     DEFAULT_REQUEST_TIMEOUT: ClassVar[float] = 90.0  # Seconds.
+    DEFAULT_MAX_DOWNLOAD_WORKERS: ClassVar[int] = 4
 
     # Instance variables.
     username: str
@@ -150,6 +152,26 @@ class Orchestrator:
                     break
 
                 page += 1
+
+    async def download_wallpapers(self, *, max_workers: int | None = None) -> None:
+        """Download queued wallpapers."""
+
+        async def worker() -> None:
+            while True:
+                downloader_args = await self._download_queue.get()
+                await download_wallpaper(*downloader_args)
+                self._download_queue.task_done()
+
+        tasks: list[Task] = []
+        max_workers = max_workers or self.DEFAULT_MAX_DOWNLOAD_WORKERS
+        for _ in range(max_workers):
+            tasks.append(asyncio.create_task(worker()))
+
+        await self._download_queue.join()
+
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def _close_session(self) -> None:
         """Cleanup function for atexit to close the HTTP client session."""
