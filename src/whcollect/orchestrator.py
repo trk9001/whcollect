@@ -48,9 +48,13 @@ class Orchestrator:
         self.username = username
         self.collections = set(collections)
         self.api_key = api_key
-        self.save_location = (
-            Path.cwd() if save_location is None else Path(save_location)
-        )
+
+        if save_location is None:
+            self.save_location = Path.cwd()
+        else:
+            self.save_location = Path(save_location)
+            if not self.save_location.is_dir():
+                raise NotADirectoryError(f"Directory must exist: {self.save_location}")
         self.create_dirs = not flat
 
         # Set the asyncio event loop up.
