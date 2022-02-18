@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import Iterable
 from typing import Literal
 
@@ -6,6 +7,8 @@ from aiohttp import ClientResponse, ClientResponseError, ClientSession
 from yarl import URL
 
 from .exceptions import BadResponse
+
+logger = logging.getLogger(__name__)
 
 # Literal type for supported HTTP methods.
 HTTP_METHOD = Literal["GET"]
@@ -41,9 +44,11 @@ async def request_with_backoff(
     last_exc: Exception | None = None
 
     for n in range(max_tries):
+        logger.info(f"{method} {url} (try #{n+1})")
         try:
             resp = await session.request(method, url, **kwargs)
             if resp.status not in retry_for_statuses:
+                logger.info(f"{method} {url} responded with status: {resp.status}")
                 return resp
         except ClientResponseError as exc:
             if exc.status not in retry_for_statuses:
@@ -53,4 +58,5 @@ async def request_with_backoff(
         if n < max_tries:
             await asyncio.sleep(2 ** n)
 
+    logger.info(f"{method} {url} failed!")
     raise BadResponse(f"Tried {max_tries} times", last_exception_caught=last_exc)
