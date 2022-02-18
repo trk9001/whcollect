@@ -10,8 +10,9 @@ from .exceptions import BadResponse
 # Literal type for supported HTTP methods.
 HTTP_METHOD = Literal["GET"]
 
-# By default try a request only once (rule of least surprise).
-DEFAULT_MAX_TRIES = 1
+# Default max times to try a request (eight tries means 127 seconds between the
+# first and last requests).
+DEFAULT_MAX_TRIES = 8
 
 
 async def request_with_backoff(
