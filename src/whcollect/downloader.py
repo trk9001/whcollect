@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 
 import aiofiles
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
+
+logger = logging.getLogger(__name__)
 
 
 async def download_wallpaper(
@@ -10,7 +13,7 @@ async def download_wallpaper(
     location: Path | str,
     *,
     session: ClientSession | None = None,
-    timeout: ClientTimeout | float = 90
+    timeout: ClientTimeout | float = 90,
 ) -> Path:
     """Download a wallpaper from a URL and save it to a directory.
 
@@ -29,11 +32,13 @@ async def download_wallpaper(
         session = ClientSession(timeout=timeout)
         close_session = True
 
+    logger.info(f"GET {url}")
     async with session.get(url, raise_for_status=True) as resp:
         file_name = url.path.split("/")[-1]
         full_path = location / file_name
         async with aiofiles.open(full_path, "wb") as f:
             await f.write(await resp.read())
+            logger.info(f"Saved {file_name} to {full_path}")
 
     # Close the session only if it was just created.
     if close_session:
