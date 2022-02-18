@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import logging
 from asyncio import AbstractEventLoop, Queue, Task
 from collections.abc import Iterable
 from pathlib import Path
@@ -10,6 +11,8 @@ from yarl import URL
 
 from .downloader import download_wallpaper
 from .requests import request_with_backoff
+
+logger = logging.getLogger(__name__)
 
 # Type alias for an asyncio-compatible event loop.
 EventLoop = AbstractEventLoop
@@ -101,6 +104,7 @@ class Orchestrator:
     async def fetch_and_normalize_collections(self) -> set[tuple[str, str]]:
         """Fetch and validate collection IDs."""
         url = self.API_BASE_URL / "collections" / self.username
+        logger.info(f"GET {url}")
         async with self.session.get(url) as resp:
             obj: dict = await resp.json()
 
@@ -114,6 +118,7 @@ class Orchestrator:
             if label in self.collections or id_ in self.collections:
                 self._valid_collections.add((id_, label))
 
+        logger.info(f"Validated collections: {self._valid_collections}")
         return self._valid_collections
 
     def construct_wallpaper_destination(self, collection_label: str) -> Path:
@@ -140,6 +145,7 @@ class Orchestrator:
             while True:
                 params["page"] = str(page)
 
+                logger.info(f"GET {url}{f' (params: {params})' if params else ''}")
                 resp = await request_with_backoff(
                     self.session, "GET", url, params=params
                 )
@@ -150,28 +156,34 @@ class Orchestrator:
                     raise ValueError(f"Error: {error}")
 
                 for item in obj["data"]:  # type: dict[str, Any]
-                    await self._download_queue.put((item["path"], save_location))
+                    queue_item = (item["path"], save_location)
+                    await self._download_queue.put(queue_item)
+                    logger.info(f"Added to download queue: {queue_item}")
 
                 if page >= obj["meta"]["last_page"]:
                     break
 
                 page += 1
 
+        logger.info("Finished queueing wallpapers for downloading")
+
     async def download_wallpapers(self, *, max_workers: int | None = None) -> None:
         """Download queued wallpapers."""
 
-        async def worker() -> None:
+        async def worker(name: str) -> None:
             while True:
                 downloader_args = await self._download_queue.get()
+                logger.info(f"Worker<{name}>: Gotten from queue: {downloader_args}")
                 await download_wallpaper(*downloader_args)
                 self._download_queue.task_done()
 
         tasks: list[Task] = []
         max_workers = max_workers or self.DEFAULT_MAX_DOWNLOAD_WORKERS
-        for _ in range(max_workers):
-            tasks.append(asyncio.create_task(worker()))
+        for i in range(max_workers):
+            tasks.append(asyncio.create_task(worker(name=f"#{i+1}")))
 
         await self._download_queue.join()
+        logger.info("All download queue items have been processed")
 
         for task in tasks:
             task.cancel()
