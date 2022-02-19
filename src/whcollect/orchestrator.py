@@ -43,9 +43,9 @@ class Orchestrator:
     api_key: str
     save_location: Path
     create_dirs: bool
+    url_params: dict[str, str]
     _loop: EventLoop
     _session: ClientSession
-    _url_params: dict[str, str]
     _valid_collections: set[tuple[str, str]]
     _download_queue: Queue[tuple[URL | str, Path | str]]
 
@@ -95,7 +95,7 @@ class Orchestrator:
                 )
             self._session = session
 
-        self._url_params = extra_params
+        self.url_params = extra_params
 
     async def _create_client_session(self) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
@@ -152,7 +152,7 @@ class Orchestrator:
         for collection_id, collection_label in self._valid_collections:
             url = base_url / collection_id
             save_location = self.construct_wallpaper_destination(collection_label)
-            params = self._url_params.copy()
+            params = self.url_params.copy()
             page = 1
 
             while True:
