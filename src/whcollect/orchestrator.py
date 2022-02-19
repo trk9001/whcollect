@@ -70,6 +70,7 @@ class Orchestrator:
         *,
         loop: EventLoop | None = None,
         session: ClientSession | None = None,
+        **extra_params,
     ):
         self.username = username
         self.collections = set(collections)
@@ -105,7 +106,7 @@ class Orchestrator:
                 )
             self._session = session
 
-        self._url_params = {}
+        self._url_params = extra_params
 
     async def _create_client_session(self) -> ClientSession:
         """Create the default HTTP client session to use for requests."""
