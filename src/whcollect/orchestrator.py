@@ -19,7 +19,30 @@ EventLoop = AbstractEventLoop
 
 
 class Orchestrator:
-    """Orchestrator to manage the downloading and saving of wallpapers."""
+    """Orchestrator to manage the downloading and saving of wallpapers.
+
+    Class attributes:
+        API_BASE_URL: Wallhaven API URL.
+        DEFAULT_REQUEST_TIMEOUT: Self-explanatory.
+        DEFAULT_MAX_DOWNLOAD_WORKERS: Maximum number of workers that will
+            concurrently consume queued wallpapers for downloading.
+
+    Instance attributes:
+        username: Wallhaven username.
+        collections: Set of wallhaven collection IDs or names.
+        api_key: Wallhaven API key.
+        save_location: Directory to save the collections in.
+        create_dirs: Whether to create per-collection directories.
+        _loop: An asyncio-compatible event loop.
+        _session: An aiohhtp.ClientSession instance for making requests.
+        _url_params: Additional wallpaper-filtering parameters.
+        _valid_collections: Validated set of collections' (ID, name) tuples.
+        _download_queue: An async queue to store wallpaper URIs and save paths.
+
+    Instance properties:
+        loop: Wraps _loop.
+        session: Wraps _session.
+    """
 
     API_BASE_URL: ClassVar[URL] = URL("https://wallhaven.cc/api/v1")
     DEFAULT_REQUEST_TIMEOUT: ClassVar[float] = 90.0  # Seconds.
